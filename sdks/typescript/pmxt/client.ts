@@ -331,6 +331,21 @@ export abstract class Exchange {
         return headers;
     }
 
+    private mergeHeaders(headers?: HeadersInit): Record<string, string> {
+        const merged = new Headers(headers);
+        for (const [key, value] of Object.entries(this.getAuthHeaders())) {
+            merged.set(key, value);
+        }
+        return Object.fromEntries(merged.entries());
+    }
+
+    protected getApiInitOverrides() {
+        return async ({ init }: { init: RequestInit }) => ({
+            ...init,
+            headers: this.mergeHeaders(init.headers),
+        });
+    }
+
     // Low-Level API Access
 
     /**
@@ -569,7 +584,6 @@ export abstract class Exchange {
             throw new PmxtError(`Failed to fetchOrderBook: ${error}`);
         }
     }
-
 
     async cancelOrder(orderId: string): Promise<Order> {
         await this.initPromise;
@@ -841,7 +855,7 @@ export abstract class Exchange {
             const response = await this.api.fetchOHLCV({
                 exchange: this.exchangeName as any,
                 fetchOHLCVRequest: requestBody,
-            }, { headers: this.getAuthHeaders() });
+            }, this.getApiInitOverrides());
 
             const data = this.handleResponse(response);
             return data.map(convertCandle);
@@ -879,7 +893,7 @@ export abstract class Exchange {
             const response = await this.api.fetchTrades({
                 exchange: this.exchangeName as any,
                 fetchTradesRequest: requestBody,
-            }, { headers: this.getAuthHeaders() });
+            }, this.getApiInitOverrides());
 
             const data = this.handleResponse(response);
             return data.map(convertTrade);
@@ -927,7 +941,7 @@ export abstract class Exchange {
             const response = await this.api.watchOrderBook({
                 exchange: this.exchangeName as any,
                 watchOrderBookRequest: requestBody,
-            });
+            }, this.getApiInitOverrides());
 
             const data = this.handleResponse(response);
             return convertOrderBook(data);
@@ -987,7 +1001,7 @@ export abstract class Exchange {
             const response = await this.api.watchTrades({
                 exchange: this.exchangeName as any,
                 watchTradesRequest: requestBody,
-            });
+            }, this.getApiInitOverrides());
 
             const data = this.handleResponse(response);
             return data.map(convertTrade);
@@ -1036,7 +1050,7 @@ export abstract class Exchange {
             const response = await this.api.watchAddress({
                 exchange: this.exchangeName as any,
                 watchAddressRequest: requestBody,
-            });
+            }, this.getApiInitOverrides());
 
             const data = this.handleResponse(response);
             return convertSubscriptionSnapshot(data);
@@ -1067,7 +1081,7 @@ export abstract class Exchange {
             const response = await this.api.unwatchAddress({
                 exchange: this.exchangeName as any,
                 unwatchAddressRequest: requestBody,
-            });
+            }, this.getApiInitOverrides());
 
             return this.handleResponse(response);
         } catch (error) {
@@ -1158,7 +1172,7 @@ export abstract class Exchange {
             const response = await this.api.buildOrder({
                 exchange: this.exchangeName as any,
                 buildOrderRequest: requestBody,
-            });
+            }, this.getApiInitOverrides());
 
             const data = this.handleResponse(response);
             return data as BuiltOrder;
@@ -1198,7 +1212,7 @@ export abstract class Exchange {
             const response = await this.api.submitOrder({
                 exchange: this.exchangeName as any,
                 submitOrderRequest: requestBody,
-            });
+            }, this.getApiInitOverrides());
 
             const data = this.handleResponse(response);
             return convertOrder(data);
@@ -1271,7 +1285,7 @@ export abstract class Exchange {
             const response = await this.api.createOrder({
                 exchange: this.exchangeName as any,
                 createOrderRequest: requestBody,
-            });
+            }, this.getApiInitOverrides());
 
             const data = this.handleResponse(response);
             return convertOrder(data);
@@ -1325,7 +1339,7 @@ export abstract class Exchange {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    ...this.config.headers
+                    ...this.getAuthHeaders()
                 },
                 body: JSON.stringify(body)
             });
